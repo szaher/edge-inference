@@ -1,0 +1,26 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+jupyter = "*"
+matplotlib = "*"
+scikit-learn = "*"
+pandas = "*"
+numpy = "*"
+seaborn = "*"
+tensorflow = "*"
+pyppeteer = "*"
+gdown = "*"
+tqdm = "==4.60.0"
+paramiko = "*"
+fastapi = "*"
+uvicorn = "*"
+pydantic = "*"
+
+[dev-packages]
+bpython = "*"
+
+[requires]
+python_version = "3.8"
