@@ -42,6 +42,11 @@ async def do_operation(model_name, model_helper: models.ModelHelper):
     return output.numpy().tolist()
 
 
+@app.get("/status")
+async def agent_status():
+    return "ok"
+
+
 def get_weights(model, layer_name: str, start: int, end: int):
     for weight in model.weights:
         if weight.name == layer_name:
