@@ -38,7 +38,9 @@ async def do_operation(model_name, model_helper: models.ModelHelper):
         model=model, layer_name=layer_name,
         start=model_helper.start_index, end=model_helper.end_index
     )
-    output = gen_math_ops.mat_mul(weights, model_helper.data)
+    output = gen_math_ops.MatMul(a=model_helper.data, b=weights)
+    # print(output.numpy())
+    # print("Output Shape ", output.shape)
     return output.numpy().tolist()
 
 

@@ -12,7 +12,7 @@ from lib.distributed_layers import DistributedDense
 from lib import distributed_layers
 from lib import models
 
-tf.enable_eager_execution(config=None, device_policy=None, execution_mode=None)
+# tf.enable_eager_execution(config=None, device_policy=None, execution_mode=None)
 custom_objects = {"DistributedDense": distributed_layers.DistributedDense}
 
 host = models.AgentHost(host="http://localhost:8888", protocol="http", path="model/", model="mnist.latest", method="POST")
@@ -46,11 +46,8 @@ print(x_test.shape[0], "test samples")
 y_train = keras.utils.to_categorical(y_train, digits)
 y_test = keras.utils.to_categorical(y_test, digits)
 
-
-import importlib
-distributed_layers = importlib.reload(distributed_layers)
-
-output = model.predict(x_test)
-
-
-
+# import importlib
+# distributed_layers = importlib.reload(distributed_layers)
+#
+# output = model.predict(x_test)
+output = model.predict(x_test[0:1])
