@@ -5,6 +5,8 @@ import sys
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import gen_math_ops
+from tensorflow.python.ops import nn_ops
+
 from tensorflow import keras
 from fastapi import FastAPI
 
@@ -17,6 +19,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from lib import distributed_layers
+from lib import convolutional
 from lib import models
 # static variables
 
@@ -25,8 +28,8 @@ MODELS_PATH = os.path.join(os.path.abspath("."), "saved_models/")
 app = FastAPI(title="Helper Agent", description="This api to help others execute their DL models.")
 
 
-@app.post("/model/{model_name}")
-async def do_operation(model_name, model_helper: models.ModelHelper):
+@app.post("/model/{model_name}/matmul")
+async def mat_mul(model_name, model_helper: models.ModelHelper):
     model_path = os.path.join(MODELS_PATH, "{}.h5".format(model_name))
     model = load_model(model_path=model_path)
     layer_idx = ""
@@ -44,6 +47,31 @@ async def do_operation(model_name, model_helper: models.ModelHelper):
     return output.numpy().tolist()
 
 
+@app.post("/model/{model_name}/convolv")
+async def convolv(model_name, conv_helper: models.Conv2DHelper):
+    model_path = os.path.join(MODELS_PATH, "{}.h5".format(model_name))
+    model = load_model(model_path=model_path)
+
+    layer = model.layers[conv_helper.layer_index]
+
+    kernel = layer.kernel[:, :, conv_helper.kernel_index[0]:conv_helper.kernel_index[1], :]
+    # data = np.array(conv_helper.data)
+
+    outputs = nn_ops.convolution_v2(
+        input=conv_helper.data,
+        padding=conv_helper.padding,
+        strides=conv_helper.strides,
+        dilations=conv_helper.dilations,
+        data_format=conv_helper.data_format,
+        name="Conv2D",
+        filters=kernel
+    )
+    return outputs.numpy().tolist()
+
+
+def get_convolv_kernel():
+    return np.array([])
+
 @app.get("/status")
 async def agent_status():
     return "ok"
@@ -60,7 +88,8 @@ def get_weights(model, layer_name: str, start: int, end: int):
 
 def load_model(model_path):
     custom_objects = {
-        "DistributedDense": distributed_layers.DistributedDense
+        "DistributedDense": distributed_layers.DistributedDense,
+        "DistributedConv2D": convolutional.DistributedConv2D
     }
     model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
     return model
