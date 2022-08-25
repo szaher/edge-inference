@@ -32,15 +32,13 @@ app = FastAPI(title="Helper Agent", description="This api to help others execute
 async def mat_mul(model_name, model_helper: models.ModelHelper):
     model_path = os.path.join(MODELS_PATH, "{}.h5".format(model_name))
     model = load_model(model_path=model_path)
-    layer_idx = ""
-    if model_helper.layer_index > 0:
-        layer_idx = "_{0}".format(model_helper.layer_index)
-    layer_name = "{0}{1}/{2}:0".format(model_helper.layer_name, layer_idx, model_helper.weight_type)
+
+    layer = model.layers[model_helper.layer_index]
 
     weights = get_weights(
-        model=model, layer_name=layer_name,
-        start=model_helper.start_index, end=model_helper.end_index
+        layer=layer, start=model_helper.start_index, end=model_helper.end_index
     )
+
     output = gen_math_ops.MatMul(a=model_helper.data, b=weights)
     # print(output.numpy())
     # print("Output Shape ", output.shape)
@@ -51,7 +49,6 @@ async def mat_mul(model_name, model_helper: models.ModelHelper):
 async def convolv(model_name, conv_helper: models.Conv2DHelper):
     model_path = os.path.join(MODELS_PATH, "{}.h5".format(model_name))
     model = load_model(model_path=model_path)
-
     layer = model.layers[conv_helper.layer_index]
 
     kernel = layer.kernel[:, :, conv_helper.kernel_index[0]:conv_helper.kernel_index[1], :]
@@ -72,14 +69,15 @@ async def convolv(model_name, conv_helper: models.Conv2DHelper):
 def get_convolv_kernel():
     return np.array([])
 
+
 @app.get("/status")
 async def agent_status():
     return "ok"
 
 
-def get_weights(model, layer_name: str, start: int, end: int):
-    for weight in model.weights:
-        if weight.name == layer_name:
+def get_weights(layer, start: int, end: int):
+    for weight in layer.weights:
+        if "kernel" in weight.name:
             if end == -1:
                 return weight.numpy()[start:]
             return weight.numpy()[start:end]
