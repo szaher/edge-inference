@@ -46,13 +46,22 @@ def classify(model_path, input_path, top=1):
     # set data as input for our model
     interpreter.set_tensor(input_details[0]['index'], data)
 
+    # get start time
+    start = time.time()
+
     # run the inference
     interpreter.invoke()
+
+    # get end time
+    end = time.time()
 
     # get results...
     res = interpreter.get_tensor(output_details[0]['index'])
 
     idx = np.argpartition(res.flatten(), kth=-top)[-top:]
+
+    print(f"Execution time: {end-start}")
+
     return idx
 
 

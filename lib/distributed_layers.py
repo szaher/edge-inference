@@ -133,19 +133,21 @@ class DistributedDense(layers.Layer):
             else:
 
                 if not training and self.agent_host:
+                    try:
+                        _mod = int(inputs.shape[1]/2)
+                        agent_inputs = inputs[:, :_mod].numpy()
+                        # print("Agent inputs >>> ", agent_inputs.shape)
+                        mh = models.ModelHelper(
+                            layer_index=self.layer_index, layer_name="distributed_dense", start_index=0,
+                            end_index=_mod, weight_type="kernel", model="", data=agent_inputs.tolist()
+                        )
 
-                    _mod = int(inputs.shape[1]/2)
-                    agent_inputs = inputs[:, :_mod].numpy()
-                    # print("Agent inputs >>> ", agent_inputs.shape)
-                    mh = models.ModelHelper(
-                        layer_index=self.layer_index, layer_name="distributed_dense", start_index=0,
-                        end_index=_mod, weight_type="kernel", model="", data=agent_inputs.tolist()
-                    )
-
-                    out1 = np.array(self.agent_host.mat_mul(data=mh))
-                    out2 = gen_math_ops.MatMul(a=inputs[:, _mod:], b=self.kernel[_mod:, :]).numpy()
-                    outputs = out1 + out2
-                    # outputs = gen_math_ops.MatMul(a=inputs, b=self.kernel)
+                        out1 = np.array(self.agent_host.mat_mul(data=mh))
+                        out2 = gen_math_ops.MatMul(a=inputs[:, _mod:], b=self.kernel[_mod:, :]).numpy()
+                        outputs = out1 + out2
+                    except:
+                        print("calling remote host failed.")
+                        outputs = gen_math_ops.MatMul(a=inputs, b=self.kernel)
                 else:
                     # print("No agents found!")
                     outputs = gen_math_ops.MatMul(a=inputs, b=self.kernel)

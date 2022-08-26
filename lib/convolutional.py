@@ -162,23 +162,26 @@ class DistributedConv2D(layers.Layer):
             inputs = array_ops.pad(inputs, self._compute_causal_padding(inputs))
 
         if not training and self.agent_host:
-            print("Not Training and Agent host is set!!!!")
             # b, w, h, c = inputs.shape
             c = inputs.shape[self._get_channel_axis()]
             nw, nh, ch, out = self.kernel.shape
             if c > 1:
-                agent_inputs = inputs[:, :, :, 2:3].numpy().tolist()
-                inputs = inputs[:, :, :, 0:2]
-                self.distributed = True
-                keywords = self._convolution_op.keywords
-                c2dh = models.Conv2DHelper(
-                    layer_index=self.layer_index, layer_name="DistributedConv2D", weight_type="kernel",
-                    kernel_index=[2, 3], strides=keywords['strides'], padding=keywords['padding'],
-                    data_format=keywords['data_format'], dilations=keywords['dilations'], data=agent_inputs
-                )
-                out1 = self.agent_host.convolution(data=c2dh)
-                out2 = self._convolution_op(inputs, self.kernel[:, :, 0:2, :])
-                outputs = out1 + out2
+                try:
+                    agent_inputs = inputs[:, :, :, 2:3].numpy().tolist()
+                    inputs = inputs[:, :, :, 0:2]
+                    self.distributed = True
+                    keywords = self._convolution_op.keywords
+                    c2dh = models.Conv2DHelper(
+                        layer_index=self.layer_index, layer_name="DistributedConv2D", weight_type="kernel",
+                        kernel_index=[2, 3], strides=keywords['strides'], padding=keywords['padding'],
+                        data_format=keywords['data_format'], dilations=keywords['dilations'], data=agent_inputs
+                    )
+                    out1 = self.agent_host.convolution(data=c2dh)
+                    out2 = self._convolution_op(inputs, self.kernel[:, :, 0:2, :])
+                    outputs = out1 + out2
+                except:
+                    print("calling remote host failed")
+                    outputs = self._convolution_op(inputs, self.kernel)
             else:
                 outputs = self._convolution_op(inputs, self.kernel)
         else:
