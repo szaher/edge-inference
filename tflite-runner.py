@@ -6,31 +6,54 @@ import numpy as np
 import time
 import argparse
 import sys
-import numpy
+from tflite_runtime.interpreter import Interpreter
+import numpy as np
+from PIL import Image
 
 
 def parse_args(args=[]):
     parser = argparse.ArgumentParser(description='Capstone: Distributed Edge Inference TFLite Converter')
-    parser.add_argument("--model", help="Absolute path to model .tflite file.")
+    parser.add_argument("-m", "--model", help="Absolute path to model .tflite file.")
     parser.add_argument("-i", "--input", help="input file to classify")
+    parser.add_argument("-l", "--labels", help="Path to labels.txt")
+    parser.add_argument("-t", "--topk", default=1, help="Top k element")
     return parser.parse_args(args)
 
 
-def classify(interpreter, image, top=1):
-    tensorIdx = interpreter.get_input_details()[0]['index']
-    inTensor = interpreter.tensor(tensorIdx)()[0]
-    inTensor[:, :] = image
+def classify(model_path, input_path, top=1):
+    # Create model interpreter
+    interpreter = Interpreter(model_path)
+    # allocate tensor to get input/output details
+    interpreter.allocate_tensors()
 
-    # invoke
+    # Get input details
+    input_details = interpreter.get_input_details()
+    # Get output details
+    output_details = interpreter.get_output_details()
+
+    # get input image shape to reshape input if not in the correct shape
+    input_shape = input_details[0]['shape']
+
+    # load image data
+    img = Image.open(input_path)
+
+    # convert image to numpy array
+    data = np.asarray(img, dtype='float32')
+
+    # normalize...
+    data = data.reshape(input_shape) / 255.
+
+    # set data as input for our model
+    interpreter.set_tensor(input_details[0]['index'], data)
+
+    # run the inference
     interpreter.invoke()
-    output_details = interpreter.get_output_details()[0]
-    output = np.squeeze(interpreter.get_tensor(output_details['index']))
 
-    scale, zero_point = output_details['quantization']
-    output = scale * (output - zero_point)
+    # get results...
+    res = interpreter.get_tensor(output_details[0]['index'])
 
-    ordered = np.argpartition(-output, 1)
-    return [(i, output[i]) for i in ordered[:top]][0]
+    idx = np.argpartition(res.flatten(), kth=-top)[-top:]
+    return idx
 
 
 def main():
@@ -38,22 +61,8 @@ def main():
 
     if not os.path.exists(args.model) or not os.path.exists(args.input):
         raise FileNotFoundError("Please make sure the model and input paths are correct!")
-    interpreter = Interpreter(args.model)
-    # allocate tensors
-    interpreter.allocate_tensors()
-    # get required input image dimensions
-    _, height, width, _ = interpreter.get_input_details()[0]['shape']
-    print("Image shape must be: (", width, ",", height, ")")
-    img = Image.open(args.input)
-    image = np.asarray(img).reshape((28, 28, 1))
-    time1 = time.time()
-
-    idx, prob = classify(interpreter=interpreter, image=image.copy())
-
-    time2 = time.time()
-    time_taken = round(time2-time1)
-    print("Classification time: ", time_taken, " Seconds.")
-    print(idx, prob)
+    result = classify(model_path=args.model, input_path=args.input, top=int(args.topk))
+    print(result)
     return 0
 
 
