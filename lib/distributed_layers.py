@@ -143,9 +143,12 @@ class DistributedDense(layers.Layer):
                         )
 
                         out1 = np.array(self.agent_host.mat_mul(data=mh))
+                        print(out1.shape)
                         out2 = gen_math_ops.MatMul(a=inputs[:, _mod:], b=self.kernel[_mod:, :]).numpy()
+                        print(out2.shape)
                         outputs = out1 + out2
-                    except:
+                    except Exception as e:
+                        print(e)
                         print("calling remote host failed.")
                         outputs = gen_math_ops.MatMul(a=inputs, b=self.kernel)
                 else:

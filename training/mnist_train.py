@@ -48,7 +48,7 @@ def main():
             layers.MaxPooling2D(pool_size=(2, 2)),
             layers.Flatten(),
             layers.Dropout(0.5),
-            DistributedDense(digits, activation="softmax"),
+            DistributedDense(digits, activation="softmax", layer_index=6),
         ]
     )
 
@@ -72,12 +72,12 @@ def main():
     print(f"Model saved to {model_save_path}")
 
     print(">>>>>>>>>>>>>>>>>>>>>>>> Predict <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-
-    host = models.AgentHost(host="http://localhost:8888", protocol="http", path="model/", model="mnist.latest", method="POST")
-    model.layers[6].set_agent_host(host=host)
-
-    output = model.predict(x_test)
-    print(output)
+    #
+    # host = models.AgentHost(host="http://localhost:8888", protocol="http", path="model/", model="mnist.latest", method="POST")
+    # model.layers[6].set_agent_host(host=host)
+    #
+    # output = model.predict(x_test)
+    # print(output)
 
 
 if __name__ == '__main__':
