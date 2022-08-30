@@ -5,6 +5,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 # allow relative import
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -36,6 +37,7 @@ def main():
     # set batch size and iterations
     batch_size = 256
     epochs = 10
+
     model_save_path = "saved_models/cifar10.latest.h5"
 
     # Load the data and split it between train and test sets
@@ -62,6 +64,9 @@ def main():
     # Print model summary
     model.summary()
 
+    logdir = "logs/cifar10/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
+
     # compile the model and use categorical cross entropy for loss as we have 10 categories
     model.compile(
         optimizer='adam',
@@ -70,7 +75,7 @@ def main():
     )
 
     # train the model
-    history = model.fit(train_images, train_labels, epochs=epochs, validation_data=(test_images, test_labels))
+    history = model.fit(train_images, train_labels, batch_size=batch_size, epochs=epochs, validation_data=(test_images, test_labels), callbacks=[tensorboard_callback])
 
     # evaluate the model
     print("Time to evaluate!......................")

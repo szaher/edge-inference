@@ -3,12 +3,11 @@ import sys
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import layers
+import time
 
 # allow relative import
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
-from lib.distributed_layers import DistributedDense
 from lib import distributed_layers
 from lib import convolutional
 from lib import models
@@ -56,4 +55,9 @@ y_test = keras.utils.to_categorical(y_test, digits)
 # distributed_layers = importlib.reload(distributed_layers)
 #
 # output = model.predict(x_test)
+start = time.time()
 output = model.predict(x_test[0:1])
+end = time.time()
+
+print(output)
+print("Classification Time: ", end-start)

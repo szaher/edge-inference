@@ -1,7 +1,7 @@
 import os
 import sys
 
-import matplotlib.pyplot as plt
+import time
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
@@ -40,7 +40,9 @@ for l in model.layers:
 # Scale images to the [0, 1] range
 x_test = test_images.astype("float32") / 255.
 
+start = time.time()
 output = model.predict(x_test[0:1])
+end = time.time()
 
 idxes = np.argpartition(output[0], -3)[-3:]
 
@@ -52,5 +54,4 @@ for idx in idxes:
 idx = np.argmax(output)
 print("> Top class: ", class_names[idx])
 
-# plt.imshow(x_test[0])
-# plt.show()
+print("Classification Time: ", end-start)

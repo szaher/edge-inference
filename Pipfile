@@ -18,6 +18,8 @@ paramiko = "*"
 fastapi = "*"
 uvicorn = "*"
 pydantic = "*"
+tfds-nightly = "*"
+pydot = "*"
 
 [dev-packages]
 bpython = "*"

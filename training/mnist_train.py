@@ -4,6 +4,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from datetime import datetime
 
 # allow relative import
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +27,7 @@ def main():
     (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
 
     # Scale images to the [0, 1] range
-    x_train = x_train.astype("float32") / 255.
+    x_train =  x_train.astype("float32") / 255.
     x_test = x_test.astype("float32") / 255.
     # Make sure images have shape (28, 28, 1)
     x_train = np.expand_dims(x_train, -1)
@@ -58,8 +59,11 @@ def main():
     # compile the model and use categorical cross entropy for loss as we have 10 categories
     model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
 
+    logdir = "logs/mnist/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+    tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
+
     # train the model
-    model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_split=0.1)
+    model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_split=0.1, callbacks=[tensorboard_callback])
 
     # evaluate the model
     print("Time to evaluate!......................")

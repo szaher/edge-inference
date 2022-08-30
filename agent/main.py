@@ -28,12 +28,26 @@ MODELS_PATH = os.path.join(os.path.abspath("."), "saved_models/")
 app = FastAPI(title="Helper Agent", description="This api to help others execute their DL models.")
 
 
-@app.post("/model/{model_name}/matmul")
-async def mat_mul(model_name, model_helper: models.ModelHelper):
-    model_path = os.path.join(MODELS_PATH, "{}.h5".format(model_name))
-    model = load_model(model_path=model_path)
+def load_model(model_path):
+    custom_objects = {
+        "DistributedDense": distributed_layers.DistributedDense,
+        "DistributedConv2D": convolutional.DistributedConv2D
+    }
+    model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
+    return model
 
-    layer = model.layers[model_helper.layer_index]
+
+mnist_model = load_model(model_path=os.path.join(MODELS_PATH, "mnist.latest.h5"))
+cifar10_model = load_model(model_path=os.path.join(MODELS_PATH, "cifar10.latest.h5"))
+
+
+@app.post("/model/{model_name}/matmul")
+async def mat_mul(model_name, model_helper: models.DenseHelper):
+    # model_path = os.path.join(MODELS_PATH, "{}.h5".format(model_name))
+    # model = load_model(model_path=model_path)
+
+    # model = mnist_model
+    layer = mnist_model.layers[model_helper.layer_index]
 
     weights = get_weights(
         layer=layer, start=model_helper.start_index, end=model_helper.end_index
@@ -47,9 +61,12 @@ async def mat_mul(model_name, model_helper: models.ModelHelper):
 
 @app.post("/model/{model_name}/convolv")
 async def convolv(model_name, conv_helper: models.Conv2DHelper):
-    model_path = os.path.join(MODELS_PATH, "{}.h5".format(model_name))
-    model = load_model(model_path=model_path)
-    layer = model.layers[conv_helper.layer_index]
+
+    # model_path = os.path.join(MODELS_PATH, "{}.h5".format(model_name))
+    # model = load_model(model_path=model_path)
+    # model = cifar10_model
+
+    layer = cifar10_model.layers[conv_helper.layer_index]
 
     kernel = layer.kernel[:, :, conv_helper.kernel_index[0]:conv_helper.kernel_index[1], :]
     # data = np.array(conv_helper.data)
@@ -84,13 +101,6 @@ def get_weights(layer, start: int, end: int):
     return
 
 
-def load_model(model_path):
-    custom_objects = {
-        "DistributedDense": distributed_layers.DistributedDense,
-        "DistributedConv2D": convolutional.DistributedConv2D
-    }
-    model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
-    return model
 
 
 def parse_args(args=[]):

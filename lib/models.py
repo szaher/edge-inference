@@ -6,7 +6,7 @@ from typing import Union
 import numpy as np
 
 
-class ModelHelper(BaseModel):
+class DenseHelper(BaseModel):
     layer_index: int
     layer_name: str
     start_index: int
@@ -62,7 +62,7 @@ class AgentHost(object):
         return result
 
     # This is host supported operations
-    def mat_mul(self, data: ModelHelper):
+    def mat_mul(self, data: DenseHelper):
         if self.protocol not in ["http"]:
             raise Exception("Protocol not supported")
         session = requests.Session()

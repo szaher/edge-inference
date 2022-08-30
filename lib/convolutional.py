@@ -2,6 +2,8 @@ import functools
 
 import os
 import sys
+import threading
+
 import tensorflow as tf
 from tensorflow.python.eager import context
 from tensorflow.python.framework import tensor_shape
@@ -75,6 +77,7 @@ class DistributedConv2D(layers.Layer):
         self.distributed = False
         self.layer_index = layer_index
         self.agent_host: models.AgentHost = None
+        self.output1 = None
 
         tf.config.run_functions_eagerly(True)
 
@@ -161,24 +164,30 @@ class DistributedConv2D(layers.Layer):
         if self._is_causal:  # Apply causal padding to inputs for Conv1D.
             inputs = array_ops.pad(inputs, self._compute_causal_padding(inputs))
 
+        def distribute():
+            agent_inputs = inputs[:, :, :, 2:3].numpy().tolist()
+            keywords = self._convolution_op.keywords
+            c2dh = models.Conv2DHelper(
+                layer_index=self.layer_index, layer_name="DistributedConv2D", weight_type="kernel",
+                kernel_index=[2, 3], strides=keywords['strides'], padding=keywords['padding'],
+                data_format=keywords['data_format'], dilations=keywords['dilations'], data=agent_inputs
+            )
+            self.output1 = self.agent_host.convolution(data=c2dh)
+
         if not training and self.agent_host:
             # b, w, h, c = inputs.shape
             c = inputs.shape[self._get_channel_axis()]
             nw, nh, ch, out = self.kernel.shape
             if c > 1:
                 try:
-                    agent_inputs = inputs[:, :, :, 2:3].numpy().tolist()
+
+                    th = threading.Thread(target=distribute)
+                    th.start()
                     inputs = inputs[:, :, :, 0:2]
-                    self.distributed = True
-                    keywords = self._convolution_op.keywords
-                    c2dh = models.Conv2DHelper(
-                        layer_index=self.layer_index, layer_name="DistributedConv2D", weight_type="kernel",
-                        kernel_index=[2, 3], strides=keywords['strides'], padding=keywords['padding'],
-                        data_format=keywords['data_format'], dilations=keywords['dilations'], data=agent_inputs
-                    )
-                    out1 = self.agent_host.convolution(data=c2dh)
+
                     out2 = self._convolution_op(inputs, self.kernel[:, :, 0:2, :])
-                    outputs = out1 + out2
+                    th.join()
+                    outputs = self.output1 + out2
                 except:
                     print("calling remote host failed")
                     outputs = self._convolution_op(inputs, self.kernel)

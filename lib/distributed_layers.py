@@ -19,6 +19,7 @@ from tensorflow.python.ops import nn_ops
 from tensorflow.python.ops import sparse_ops
 from tensorflow.python.ops import standard_ops
 import numpy as np
+import threading
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -61,6 +62,7 @@ class DistributedDense(layers.Layer):
         self.supports_masking = True
         self.agent_host: models.AgentHost = None
         self.layer_index = layer_index
+        self.output1 = None
         tf.config.run_functions_eagerly(True)
 
     def set_agent_host(self, host: models.AgentHost):
@@ -106,6 +108,7 @@ class DistributedDense(layers.Layer):
             inputs = math_ops.cast(inputs, dtype=self._compute_dtype_object)
 
         rank = inputs.shape.rank
+        out1 = "No way1!!!"
         if rank == 2 or rank is None:
             # We use embedding_lookup_sparse as a more efficient matmul operation for
             # large sparse input tensors. The op will result in a sparse gradient, as
@@ -132,21 +135,23 @@ class DistributedDense(layers.Layer):
                     self.kernel, ids, weights, combiner='sum')
             else:
 
+                def distribute():
+                    agent_inputs = inputs[:, :_mod].numpy()
+                    mh = models.DenseHelper(
+                        layer_index=self.layer_index, layer_name="distributed_dense", start_index=0,
+                        end_index=_mod, weight_type="kernel", model="", data=agent_inputs.tolist()
+                    )
+                    self.output1 = np.array(self.agent_host.mat_mul(data=mh))
+
                 if not training and self.agent_host:
                     try:
-                        _mod = int(inputs.shape[1]/2)
-                        agent_inputs = inputs[:, :_mod].numpy()
-                        # print("Agent inputs >>> ", agent_inputs.shape)
-                        mh = models.ModelHelper(
-                            layer_index=self.layer_index, layer_name="distributed_dense", start_index=0,
-                            end_index=_mod, weight_type="kernel", model="", data=agent_inputs.tolist()
-                        )
-
-                        out1 = np.array(self.agent_host.mat_mul(data=mh))
-                        print(out1.shape)
+                        _mod = int(inputs.shape[1] / 2)
+                        th = threading.Thread(target=distribute)
+                        th.start()
                         out2 = gen_math_ops.MatMul(a=inputs[:, _mod:], b=self.kernel[_mod:, :]).numpy()
-                        print(out2.shape)
-                        outputs = out1 + out2
+                        th.join()
+
+                        outputs = self.output1 + out2
                     except Exception as e:
                         print(e)
                         print("calling remote host failed.")
