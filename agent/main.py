@@ -46,8 +46,10 @@ async def mat_mul(model_name, model_helper: models.DenseHelper):
     # model_path = os.path.join(MODELS_PATH, "{}.h5".format(model_name))
     # model = load_model(model_path=model_path)
 
-    # model = mnist_model
-    layer = mnist_model.layers[model_helper.layer_index]
+    if model_name == "mnist.latest":
+        layer = mnist_model.layers[model_helper.layer_index]
+    else:
+        layer = cifar10_model.layers[model_helper.layer_index]
 
     weights = get_weights(
         layer=layer, start=model_helper.start_index, end=model_helper.end_index
@@ -66,7 +68,10 @@ async def convolv(model_name, conv_helper: models.Conv2DHelper):
     # model = load_model(model_path=model_path)
     # model = cifar10_model
 
-    layer = cifar10_model.layers[conv_helper.layer_index]
+    if model_name == "mnist.latest":
+        layer = mnist_model.layers[conv_helper.layer_index]
+    else:
+        layer = cifar10_model.layers[conv_helper.layer_index]
 
     kernel = layer.kernel[:, :, conv_helper.kernel_index[0]:conv_helper.kernel_index[1], :]
     # data = np.array(conv_helper.data)
@@ -99,8 +104,6 @@ def get_weights(layer, start: int, end: int):
                 return weight.numpy()[start:]
             return weight.numpy()[start:end]
     return
-
-
 
 
 def parse_args(args=[]):
